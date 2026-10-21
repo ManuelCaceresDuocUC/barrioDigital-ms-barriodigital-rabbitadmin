@@ -177,6 +177,9 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
 
     @Override
     public void deleteExchange(String name) {
+        // Exchange por defecto (nombre vacío) y exchanges amq.*: son del broker, petición inválida (400).
+        requireName(name, "exchange");
+        // Exchanges de la topología del caso (cmd.*): existen pero están protegidos (409).
         if (protectedResources.isProtectedExchange(name)) {
             throw new ProtectedResourceException("exchange", name);
         }

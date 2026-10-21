@@ -226,8 +226,8 @@ class RabbitAdminServiceImplTest {
 
         verify(amqpAdmin).deleteExchange("ex.prueba");
         assertThatThrownBy(() -> service.deleteExchange("cmd.direct")).isInstanceOf(ProtectedResourceException.class);
-        assertThatThrownBy(() -> service.deleteExchange("amq.topic")).isInstanceOf(ProtectedResourceException.class);
-        assertThatThrownBy(() -> service.deleteExchange("")).isInstanceOf(ProtectedResourceException.class);
+        assertThatThrownBy(() -> service.deleteExchange("amq.topic")).isInstanceOf(InvalidTopologyException.class);
+        assertThatThrownBy(() -> service.deleteExchange("")).isInstanceOf(InvalidTopologyException.class);
         verify(amqpAdmin, never()).deleteExchange("cmd.direct");
     }
 
