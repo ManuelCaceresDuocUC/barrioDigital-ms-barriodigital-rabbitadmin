@@ -3,6 +3,7 @@ package cl.barriodigital.rabbitadmin.controller;
 import java.net.URI;
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,7 +30,7 @@ public class QueueController {
     private final RabbitAdminService service;
 
     @PostMapping
-    public ResponseEntity<QueueResponse> create(@RequestBody CreateQueueRequest request) {
+    public ResponseEntity<QueueResponse> create(@Valid @RequestBody CreateQueueRequest request) {
         QueueResponse created = service.createQueue(request);
         // Ruta relativa: detrás del gateway no se filtra el host interno del servicio.
         URI location = UriComponentsBuilder.fromPath("/api/rabbit/queues/{name}")

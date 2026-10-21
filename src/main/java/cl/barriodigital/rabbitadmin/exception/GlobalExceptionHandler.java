@@ -1,8 +1,10 @@
 package cl.barriodigital.rabbitadmin.exception;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import cl.barriodigital.rabbitadmin.dto.ApiError;
+import cl.barriodigital.rabbitadmin.dto.ExchangeType;
 import lombok.extern.slf4j.Slf4j;
 
 /** Traduce las excepciones de dominio y de entrada a respuestas JSON con un {@code message} legible. */
@@ -46,20 +49,37 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        // TreeMap: el orden de los campos es estable y el mensaje no cambia entre ejecuciones.
+        Map<String, String> fieldErrors = new TreeMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-        return build(HttpStatus.BAD_REQUEST, String.join("; ", fieldErrors.values()), fieldErrors);
+        String message = "Datos inválidos: " + fieldErrors.entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue())
+                .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, message, fieldErrors);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {
+        if (mentions(ex, ExchangeType.class.getSimpleName())) {
+            String allowed = Arrays.stream(ExchangeType.values()).map(Enum::name).collect(Collectors.joining(", "));
+            return build(HttpStatus.BAD_REQUEST, "Tipo de exchange no válido. Valores permitidos: " + allowed, null);
+        }
         return build(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es un JSON válido", null);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiError> handleMissingParameter(MissingServletRequestParameterException ex) {
         return build(HttpStatus.BAD_REQUEST, "Falta el parámetro obligatorio '" + ex.getParameterName() + "'", null);
+    }
+
+    private static boolean mentions(Throwable error, String text) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current.getMessage() != null && current.getMessage().contains(text)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message, Map<String, String> fieldErrors) {

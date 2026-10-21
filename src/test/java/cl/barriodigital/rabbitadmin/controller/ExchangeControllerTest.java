@@ -131,7 +131,7 @@ class ExchangeControllerTest {
 
         mockMvc.perform(post("/api/rabbit/exchanges").with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"amq.x\",\"type\":\"DIRECT\"}"))
+                .content("{\"name\":\"ex.x\",\"type\":\"DIRECT\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Nombre reservado"));
     }

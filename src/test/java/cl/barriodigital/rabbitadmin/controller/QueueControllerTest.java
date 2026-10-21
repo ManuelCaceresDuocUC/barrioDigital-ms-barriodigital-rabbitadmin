@@ -127,7 +127,7 @@ class QueueControllerTest {
                 .thenThrow(new InvalidTopologyException("El nombre de la cola no puede estar vacío"));
 
         mockMvc.perform(post("/api/rabbit/queues").with(admin())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"q.prueba\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("El nombre de la cola no puede estar vacío"));
     }
