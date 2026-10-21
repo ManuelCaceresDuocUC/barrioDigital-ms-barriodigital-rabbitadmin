@@ -1,0 +1,77 @@
+### Administrador de RabbitMQ de BarrioDigital
+### Para VS Code (REST Client) o IntelliJ. Define el token en la variable @token.
+@baseUrl = http://localhost:8086
+@token = PEGAR_AQUI_EL_JWT_DE_ENTRA_ID_CON_ROL_ADMIN
+
+### ---------------------------------------------------------------- Colas
+
+### Crear una cola (201). Repetirla da 409; un nombre inválido da 400
+POST {{baseUrl}}/api/rabbit/queues
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "q.prueba",
+  "durable": true,
+  "autoDelete": false,
+  "deadLetterExchange": "cmd.dead.dlx",
+  "deadLetterRoutingKey": "email.dlq",
+  "messageTtlMs": 60000
+}
+
+### Listar colas (200)
+GET {{baseUrl}}/api/rabbit/queues
+Authorization: Bearer {{token}}
+
+### Consultar una cola (200; 404 si no existe)
+GET {{baseUrl}}/api/rabbit/queues/q.prueba
+Authorization: Bearer {{token}}
+
+### Vaciar una cola (204)
+DELETE {{baseUrl}}/api/rabbit/queues/q.prueba/messages
+Authorization: Bearer {{token}}
+
+### Eliminar una cola (204; las q.cmd.* dan 409)
+DELETE {{baseUrl}}/api/rabbit/queues/q.prueba
+Authorization: Bearer {{token}}
+
+### ------------------------------------------------------------- Exchanges
+
+### Crear un exchange: tipo DIRECT, TOPIC, FANOUT o HEADERS (201)
+POST {{baseUrl}}/api/rabbit/exchanges
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ex.prueba",
+  "type": "TOPIC"
+}
+
+### Listar exchanges (200)
+GET {{baseUrl}}/api/rabbit/exchanges
+Authorization: Bearer {{token}}
+
+### Eliminar un exchange (204; cmd.* da 409, amq.* da 400)
+DELETE {{baseUrl}}/api/rabbit/exchanges/ex.prueba
+Authorization: Bearer {{token}}
+
+### -------------------------------------------------------------- Bindings
+
+### Crear un binding exchange -> cola (201)
+POST {{baseUrl}}/api/rabbit/bindings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "exchange": "ex.prueba",
+  "queue": "q.prueba",
+  "routingKey": "prueba.#"
+}
+
+### Listar los bindings de una cola (200)
+GET {{baseUrl}}/api/rabbit/bindings?queue=q.prueba
+Authorization: Bearer {{token}}
+
+### Eliminar un binding (204). El # de la routing key va como %23
+DELETE {{baseUrl}}/api/rabbit/bindings?exchange=ex.prueba&queue=q.prueba&routingKey=prueba.%23
+Authorization: Bearer {{token}}

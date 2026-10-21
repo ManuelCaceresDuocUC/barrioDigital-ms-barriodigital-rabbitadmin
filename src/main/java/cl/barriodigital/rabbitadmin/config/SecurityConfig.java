@@ -14,7 +14,7 @@ import cl.barriodigital.rabbitadmin.security.RestSecurityErrorHandler;
 
 /**
  * Misma configuración de resource server que requests y catalog (JWT de Entra ID, roles en el
- * claim {@code roles}), con una regla más estricta: todo lo que no sea el health exige Admin.
+ * claim {@code roles}), con una regla más estricta: todo lo que no sea el health o la documentación OpenAPI exige Admin.
  */
 @Configuration
 @EnableWebSecurity
@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Documentación OpenAPI: pública en el servicio (el puerto solo se publica en localhost).
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                         .anyRequest().hasAuthority(ADMIN_ROLE))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(errorHandler)

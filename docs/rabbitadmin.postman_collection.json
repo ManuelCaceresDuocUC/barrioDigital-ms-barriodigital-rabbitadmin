@@ -1,0 +1,294 @@
+{
+  "info": {
+    "name": "BarrioDigital - Administrador de RabbitMQ",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Define las variables baseUrl y token (JWT de Entra ID con rol Admin)."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8086"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Colas",
+      "item": [
+        {
+          "name": "Crear cola",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/queues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "queues"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"q.prueba\",\n  \"durable\": true,\n  \"autoDelete\": false,\n  \"deadLetterExchange\": \"cmd.dead.dlx\",\n  \"deadLetterRoutingKey\": \"email.dlq\",\n  \"messageTtlMs\": 60000\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar colas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/queues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "queues"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar cola",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/queues/q.prueba",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "queues",
+                "q.prueba"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Vaciar cola",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/queues/q.prueba/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "queues",
+                "q.prueba",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar cola",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/queues/q.prueba",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "queues",
+                "q.prueba"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Exchanges",
+      "item": [
+        {
+          "name": "Crear exchange",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/exchanges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "exchanges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ex.prueba\",\n  \"type\": \"TOPIC\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar exchanges",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/exchanges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "exchanges"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar exchange",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/exchanges/ex.prueba",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "exchanges",
+                "ex.prueba"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bindings",
+      "item": [
+        {
+          "name": "Crear binding",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/bindings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "bindings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exchange\": \"ex.prueba\",\n  \"queue\": \"q.prueba\",\n  \"routingKey\": \"prueba.#\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar bindings de una cola",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/bindings?queue=q.prueba",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "bindings"
+              ],
+              "query": [
+                {
+                  "key": "queue",
+                  "value": "q.prueba"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar binding",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rabbit/bindings?exchange=ex.prueba&queue=q.prueba&routingKey=prueba.%23",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rabbit",
+                "bindings"
+              ],
+              "query": [
+                {
+                  "key": "exchange",
+                  "value": "ex.prueba"
+                },
+                {
+                  "key": "queue",
+                  "value": "q.prueba"
+                },
+                {
+                  "key": "routingKey",
+                  "value": "prueba.%23"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

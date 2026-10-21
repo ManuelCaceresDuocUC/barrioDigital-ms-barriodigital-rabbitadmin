@@ -4,6 +4,21 @@ Microservicio administrador de RabbitMQ de BarrioDigital. Crea, consulta y elimi
 exchanges y bindings mediante una API REST protegida con JWT (solo rol `Admin`), de modo que
 los demás servicios no tengan que administrar el broker directamente.
 
+- Puerto: `8086`. Health: `/actuator/health`.
+- Documentación interactiva (OpenAPI/Swagger UI): `http://localhost:8086/swagger-ui.html`
+  y definición en `http://localhost:8086/v3/api-docs`.
+- Colección de Postman y archivo `.http` en [`docs/`](docs/).
+
+## Arquitectura
+
+| Capa | Responsabilidad |
+|---|---|
+| `controller` | Endpoints REST y códigos HTTP. No conocen la librería de mensajería. |
+| `service` (`RabbitAdminService`) | Reglas de administración y protección de la topología. Único uso de `AmqpAdmin`. |
+| `client` | Lectura desde el Management API de RabbitMQ (listados y bindings). |
+| `dto` / `exception` | Contratos de entrada y salida, validación y errores en JSON (`ApiError`). |
+| `config` / `security` | Propiedades, seguridad JWT (rol `Admin`) y OpenAPI. |
+
 ## Configuración (variables de entorno)
 
 | Variable | Descripción | Por defecto |
@@ -13,8 +28,8 @@ los demás servicios no tengan que administrar el broker directamente.
 | `RABBITMQ_USER` | Usuario de RabbitMQ (obligatoria) | — |
 | `RABBITMQ_PASSWORD` | Contraseña de RabbitMQ (obligatoria) | — |
 | `RABBITMQ_MGMT_URL` | URL del Management API (puerto 15672) | `http://localhost:15672` |
-
-Puerto del servicio: `8086`. Health: `/actuator/health`.
+| `JWT_ISSUER_URI` | Emisor de los tokens de Entra ID | tenant de BarrioDigital |
+| `OPENAPI_ENABLED` | `false` apaga `/v3/api-docs` y Swagger UI | `true` |
 
 ## Ejecución local
 
@@ -27,3 +42,100 @@ Con `RABBITMQ_USER` y `RABBITMQ_PASSWORD` definidas en el entorno:
     ./mvnw clean test
 
 No requieren un broker real.
+
+## Seguridad
+
+Todas las rutas de `/api/rabbit/**` exigen un JWT de Entra ID con el rol `Admin`
+(claim `roles`). Sin token responde **401** y con otro rol (Operador, Cliente, Auditor) **403**,
+ambos con cuerpo JSON. Solo `/actuator/health`, `/v3/api-docs` y Swagger UI son públicos; el
+puerto 8086 se publica únicamente en `127.0.0.1` de ec2-apps.
+
+## Endpoints
+
+| Método | Ruta | Respuesta | Descripción |
+|---|---|---|---|
+| POST | `/api/rabbit/queues` | 201 | Crea una cola (`Location` relativa) |
+| GET | `/api/rabbit/queues` | 200 | Lista las colas |
+| GET | `/api/rabbit/queues/{name}` | 200 | Detalle con mensajes y consumidores en tiempo real |
+| DELETE | `/api/rabbit/queues/{name}` | 204 | Elimina una cola |
+| DELETE | `/api/rabbit/queues/{name}/messages` | 204 | Vacía una cola |
+| POST | `/api/rabbit/exchanges` | 201 | Crea un exchange (`DIRECT`, `TOPIC`, `FANOUT`, `HEADERS`) |
+| GET | `/api/rabbit/exchanges` | 200 | Lista los exchanges |
+| DELETE | `/api/rabbit/exchanges/{name}` | 204 | Elimina un exchange |
+| POST | `/api/rabbit/bindings` | 201 | Crea un binding exchange → cola |
+| GET | `/api/rabbit/bindings?queue=` | 200 | Lista bindings (filtro por cola opcional) |
+| DELETE | `/api/rabbit/bindings?exchange=&queue=&routingKey=` | 204 | Elimina un binding |
+
+El borrado de bindings usa parámetros de URL porque un binding no tiene identificador propio.
+Una routing key con `#` se envía como `%23`.
+
+### Validación de entrada
+
+| Campo | Regla |
+|---|---|
+| `name` (cola/exchange), `exchange` y `queue` de un binding | Obligatorio; `^[A-Za-z0-9._-]{1,255}$`; no puede empezar con `amq.` |
+| `deadLetterExchange` | Opcional; mismo patrón de caracteres |
+| `type` del exchange | Obligatorio; `DIRECT`, `TOPIC`, `FANOUT` o `HEADERS` (en mayúsculas) |
+| `routingKey`, `deadLetterRoutingKey` | Hasta 255 caracteres (puede ser vacía) |
+| `messageTtlMs` | Entero positivo (milisegundos) |
+
+### Formato de error
+
+    {
+      "timestamp": "2026-10-21T17:03:24.114Z",
+      "status": 400,
+      "error": "Bad Request",
+      "message": "Datos inválidos: name: El nombre debe tener …",
+      "fieldErrors": { "name": "El nombre debe tener …" }
+    }
+
+`fieldErrors` solo aparece en errores de validación. Códigos: 400 entrada inválida,
+401 sin token, 403 sin rol Admin, 404 recurso inexistente, 409 ya existe o protegido,
+502 RabbitMQ no responde.
+
+## Topología del sistema: qué pasa al eliminar
+
+| Acción | Resultado |
+|---|---|
+| Eliminar un exchange `amq.*` o el exchange por defecto | 400 |
+| Eliminar un exchange `cmd.*` o una cola `q.cmd.*` | 409, no se elimina |
+| Vaciar una cola `q.cmd.*` (por ejemplo una DLQ) | 204, se permite |
+| Eliminar un binding entre una cola `q.cmd.*` y un exchange `cmd.*` | 409 |
+| Eliminar recursos propios (cualquier otro nombre) | 204 |
+
+Los patrones protegidos se configuran en `barriodigital.rabbitadmin.protection` (`application.yaml`).
+
+## Ejemplos con curl
+
+Todos los comandos necesitan un token con rol `Admin`:
+
+    export TOKEN='<JWT de Entra ID con rol Admin>'
+    H="Authorization: Bearer $TOKEN"
+    B=http://localhost:8086/api/rabbit
+
+Colas:
+
+    curl -i -X POST $B/queues -H "$H" -H 'Content-Type: application/json' \
+      -d '{"name":"q.prueba","messageTtlMs":60000}'
+    curl -s $B/queues -H "$H"
+    curl -s $B/queues/q.prueba -H "$H"
+    curl -i -X DELETE $B/queues/q.prueba/messages -H "$H"
+    curl -i -X DELETE $B/queues/q.prueba -H "$H"
+
+Exchanges:
+
+    curl -i -X POST $B/exchanges -H "$H" -H 'Content-Type: application/json' \
+      -d '{"name":"ex.prueba","type":"TOPIC"}'
+    curl -s $B/exchanges -H "$H"
+    curl -i -X DELETE $B/exchanges/ex.prueba -H "$H"
+
+Bindings:
+
+    curl -i -X POST $B/bindings -H "$H" -H 'Content-Type: application/json' \
+      -d '{"exchange":"ex.prueba","queue":"q.prueba","routingKey":"prueba.#"}'
+    curl -s "$B/bindings?queue=q.prueba" -H "$H"
+    curl -i -X DELETE "$B/bindings?exchange=ex.prueba&queue=q.prueba&routingKey=prueba.%23" -H "$H"
+
+Definición OpenAPI (sin token):
+
+    curl -s http://localhost:8086/v3/api-docs
