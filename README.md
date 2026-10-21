@@ -41,7 +41,22 @@ Con `RABBITMQ_USER` y `RABBITMQ_PASSWORD` definidas en el entorno:
 
     ./mvnw clean test
 
-No requieren un broker real.
+No requieren un broker real ni acceso a Entra ID: `AmqpAdmin` y el cliente del Management API
+se simulan con Mockito, y el decoder JWT de los tests rechaza cualquier token (los roles se
+inyectan con `spring-security-test`).
+
+| Qué se prueba | Clases | Cobertura |
+|---|---|---|
+| Servicio de administración con `AmqpAdmin` simulado | `RabbitAdminServiceImplTest` | Crear, consultar, eliminar y vaciar colas; exchanges y bindings; protección de `q.cmd.*` y `cmd.*`; nombres reservados; fallas del broker |
+| Cliente del Management API | `RabbitManagementClientTest` | Listados, 404 como vacío y errores aguas arriba |
+| Controladores (MockMvc con seguridad real) | `QueueControllerTest`, `ExchangeControllerTest`, `BindingControllerTest` | 201, 204, 400, 401, 403 (rol no Admin), 404, 409 y 502 por endpoint |
+| Validación de entrada | `RequestValidationTest`, `ValidationErrorsTest` | Nombre vacío, con espacios o con `amq.`, tipo inexistente, TTL no positivo, routing key larga |
+| Seguridad y roles | `SecurityConfigTest`, `JwtRolesConversionTest`, `OpenApiAccessTest` | 401/403 en JSON, conversión del claim `roles`, docs públicas y API protegida |
+| Configuración y arranque | `ManagementPropertiesTest`, `ProtectedResourcesTest`, `OpenApiConfigTest`, `RabbitAdminApplicationTests` | Propiedades, patrones protegidos, esquema OpenAPI y carga del contexto |
+
+Los tests de controladores usan `@SpringJUnitWebConfig` con `@EnableWebMvc` y el filtro de
+seguridad real (`springSecurity()`), en lugar de la anotación de slice `@WebMvcTest`: así prueban
+el mismo contrato HTTP sin depender de los paquetes de auto-configuración de test de Spring Boot 4.
 
 ## Seguridad
 
