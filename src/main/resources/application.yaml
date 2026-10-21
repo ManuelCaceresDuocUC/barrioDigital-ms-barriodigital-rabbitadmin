@@ -18,11 +18,20 @@ spring:
 
 barriodigital:
   rabbitadmin:
+    # API HTTP de gestión de RabbitMQ: cubre lo que AMQP no ofrece (listar colas, exchanges y bindings).
+    # Reutiliza las credenciales de la conexión AMQP.
     management:
       url: ${RABBITMQ_MGMT_URL:http://localhost:15672}
-      username: ${RABBITMQ_USER}
-      password: ${RABBITMQ_PASSWORD}
+      username: ${spring.rabbitmq.username}
+      password: ${spring.rabbitmq.password}
       timeout: 5s
+    # Topología del caso que no se puede eliminar desde la API (admite el comodín *).
+    protection:
+      queues:
+        - "q.cmd.*"
+      exchanges:
+        - "cmd.*"
+        - "amq.*"
 
 management:
   endpoints:
