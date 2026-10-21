@@ -3,6 +3,7 @@ package cl.barriodigital.rabbitadmin.controller;
 import java.net.URI;
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,7 +30,7 @@ public class ExchangeController {
     private final RabbitAdminService service;
 
     @PostMapping
-    public ResponseEntity<ExchangeResponse> create(@RequestBody CreateExchangeRequest request) {
+    public ResponseEntity<ExchangeResponse> create(@Valid @RequestBody CreateExchangeRequest request) {
         ExchangeResponse created = service.createExchange(request);
         URI location = UriComponentsBuilder.fromPath("/api/rabbit/exchanges/{name}")
                 .buildAndExpand(created.name()).encode().toUri();
