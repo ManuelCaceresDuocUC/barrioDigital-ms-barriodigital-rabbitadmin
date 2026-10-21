@@ -4,6 +4,6 @@ package cl.barriodigital.rabbitadmin.exception;
 public class ProtectedResourceException extends RabbitAdminException {
 
     public ProtectedResourceException(String kind, String name) {
-        super("El " + kind + " '" + name + "' pertenece a la topología del sistema y no puede eliminarse");
+        super("'" + name + "' (" + kind + ") pertenece a la topología del sistema y no puede eliminarse");
     }
 }
