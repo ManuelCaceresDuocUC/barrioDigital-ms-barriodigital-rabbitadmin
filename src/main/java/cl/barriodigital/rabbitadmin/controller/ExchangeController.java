@@ -19,9 +19,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 import cl.barriodigital.rabbitadmin.dto.CreateExchangeRequest;
 import cl.barriodigital.rabbitadmin.dto.ExchangeResponse;
 import cl.barriodigital.rabbitadmin.service.RabbitAdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /** Administración de exchanges. El acceso (solo Admin) lo exige la configuración de seguridad. */
+@Tag(name = "Exchanges", description = "Crear, listar y eliminar exchanges")
 @RestController
 @RequestMapping("/api/rabbit/exchanges")
 @RequiredArgsConstructor
@@ -29,6 +33,10 @@ public class ExchangeController {
 
     private final RabbitAdminService service;
 
+    @Operation(summary = "Crear un exchange (direct, topic, fanout o headers)", responses = {
+            @ApiResponse(responseCode = "201", description = "Exchange creado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o tipo inexistente"),
+            @ApiResponse(responseCode = "409", description = "El exchange ya existe") })
     @PostMapping
     public ResponseEntity<ExchangeResponse> create(@Valid @RequestBody CreateExchangeRequest request) {
         ExchangeResponse created = service.createExchange(request);
@@ -37,11 +45,18 @@ public class ExchangeController {
         return ResponseEntity.created(location).body(created);
     }
 
+    @Operation(summary = "Listar los exchanges", responses = {
+            @ApiResponse(responseCode = "200", description = "Lista de exchanges") })
     @GetMapping
     public List<ExchangeResponse> list() {
         return service.listExchanges();
     }
 
+    @Operation(summary = "Eliminar un exchange", responses = {
+            @ApiResponse(responseCode = "204", description = "Exchange eliminado"),
+            @ApiResponse(responseCode = "400", description = "Exchange del broker (amq.* o por defecto)"),
+            @ApiResponse(responseCode = "404", description = "El exchange no existe"),
+            @ApiResponse(responseCode = "409", description = "Exchange de la topología del sistema (cmd.*)") })
     @DeleteMapping("/{name}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String name) {

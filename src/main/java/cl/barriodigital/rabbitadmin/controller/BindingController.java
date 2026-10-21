@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 import cl.barriodigital.rabbitadmin.dto.BindingRequest;
 import cl.barriodigital.rabbitadmin.dto.BindingResponse;
 import cl.barriodigital.rabbitadmin.service.RabbitAdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -23,6 +26,7 @@ import lombok.RequiredArgsConstructor;
  * exchange + cola + routing key, por eso el borrado los recibe como parámetros de la URL
  * (una routing key con {@code #} debe enviarse como {@code %23}).
  */
+@Tag(name = "Bindings", description = "Crear, listar y eliminar bindings entre exchanges y colas")
 @RestController
 @RequestMapping("/api/rabbit/bindings")
 @RequiredArgsConstructor
@@ -30,17 +34,28 @@ public class BindingController {
 
     private final RabbitAdminService service;
 
+    @Operation(summary = "Crear un binding exchange a cola", responses = {
+            @ApiResponse(responseCode = "201", description = "Binding creado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "404", description = "La cola o el exchange no existen") })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BindingResponse create(@Valid @RequestBody BindingRequest request) {
         return service.createBinding(request);
     }
 
+    @Operation(summary = "Listar bindings, opcionalmente de una cola", responses = {
+            @ApiResponse(responseCode = "200", description = "Lista de bindings") })
     @GetMapping
     public List<BindingResponse> list(@RequestParam(required = false) String queue) {
         return service.listBindings(queue);
     }
 
+    @Operation(summary = "Eliminar un binding (exchange, queue y routingKey por parámetros; # como %23)", responses = {
+            @ApiResponse(responseCode = "204", description = "Binding eliminado"),
+            @ApiResponse(responseCode = "400", description = "Falta un parámetro obligatorio"),
+            @ApiResponse(responseCode = "404", description = "El binding no existe"),
+            @ApiResponse(responseCode = "409", description = "Binding de la topología del sistema") })
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@RequestParam String exchange, @RequestParam String queue,
