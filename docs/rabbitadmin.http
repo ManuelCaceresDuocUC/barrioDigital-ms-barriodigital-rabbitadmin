@@ -75,3 +75,7 @@ Authorization: Bearer {{token}}
 ### Eliminar un binding (204). El # de la routing key va como %23
 DELETE {{baseUrl}}/api/rabbit/bindings?exchange=ex.prueba&queue=q.prueba&routingKey=prueba.%23
 Authorization: Bearer {{token}}
+
+### Leer los mensajes de una DLQ (solo colas *.dlq; no los consume)
+GET {{baseUrl}}/api/rabbit/queues/q.cmd.crew.dlq/messages?count=10
+Authorization: Bearer {{token}}

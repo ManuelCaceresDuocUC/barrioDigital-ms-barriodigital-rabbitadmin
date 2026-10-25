@@ -3,9 +3,11 @@ package cl.barriodigital.rabbitadmin.client;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -56,6 +58,30 @@ public class RabbitManagementClient {
     public List<ManagementBinding> listQueueBindings(String queue) {
         return getList("/api/queues/" + VHOST + "/" + segment(queue) + "/bindings",
                 new ParameterizedTypeReference<>() { });
+    }
+
+    /**
+     * Lee mensajes de una cola sin consumirlos: el Management API los entrega y los devuelve a la cola
+     * (modo {@code ack_requeue_true}), marcándolos como reentregados.
+     */
+    public List<ManagementMessage> peekMessages(String queue, int count, int maxPayloadBytes) {
+        String path = "/api/queues/" + VHOST + "/" + segment(queue) + "/get";
+        Map<String, Object> request = Map.of(
+                "count", count,
+                "ackmode", "ack_requeue_true",
+                "encoding", "auto",
+                "truncate", maxPayloadBytes);
+        try {
+            List<ManagementMessage> body = restClient.post()
+                    .uri(URI.create(baseUrl + path))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<ManagementMessage>>() { });
+            return body == null ? List.of() : body;
+        } catch (RestClientException ex) {
+            throw new ManagementApiException("No se pudieron leer los mensajes de la cola '" + queue + "'", ex);
+        }
     }
 
     private <T> List<T> getList(String path, ParameterizedTypeReference<List<T>> type) {

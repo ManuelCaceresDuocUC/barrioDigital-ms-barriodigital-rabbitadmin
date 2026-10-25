@@ -74,6 +74,7 @@ puerto 8086 se publica únicamente en `127.0.0.1` de ec2-apps.
 | GET | `/api/rabbit/queues/{name}` | 200 | Detalle con mensajes y consumidores en tiempo real |
 | DELETE | `/api/rabbit/queues/{name}` | 204 | Elimina una cola |
 | DELETE | `/api/rabbit/queues/{name}/messages` | 204 | Vacía una cola |
+| GET | `/api/rabbit/queues/{name}/messages?count=` | 200 | Lee los mensajes de una DLQ sin consumirlos (correo y RUT enmascarados) |
 | POST | `/api/rabbit/exchanges` | 201 | Crea un exchange (`DIRECT`, `TOPIC`, `FANOUT`, `HEADERS`) |
 | GET | `/api/rabbit/exchanges` | 200 | Lista los exchanges |
 | DELETE | `/api/rabbit/exchanges/{name}` | 204 | Elimina un exchange |
@@ -83,6 +84,44 @@ puerto 8086 se publica únicamente en `127.0.0.1` de ec2-apps.
 
 El borrado de bindings usa parámetros de URL porque un binding no tiene identificador propio.
 Una routing key con `#` se envía como `%23`.
+
+### Lectura de mensajes de las DLQ
+
+`GET /api/rabbit/queues/{name}/messages?count=20` devuelve el contenido de los mensajes de una cola de
+mensajes fallidos para diagnosticar por qué fallaron, sin tener que entrar al servidor.
+
+- **Solo DLQ.** Únicamente las colas cuyo nombre coincide con `barriodigital.rabbitadmin.inspection.queues`
+  (por defecto `*.dlq`). En cualquier otra cola responde **403**, porque leer una cola con consumidores
+  activos podría interferir con ellos.
+- **No consume.** Los mensajes se devuelven a la cola, pero RabbitMQ los marca como *reentregados*
+  (`redelivered: true`).
+- **Datos personales enmascarados.** El correo (`m***@gmail.com`) y el RUT (`[RUT]`) se ocultan antes de
+  responder, con las mismas reglas que los logs de notify.
+- **Límites.** `count` por defecto 20 y máximo 50 (`default-messages`, `max-messages`); el cuerpo se
+  recorta a `max-payload-bytes` (20 000) y se indica con `payloadTruncated`. Un contenido binario no se entrega.
+- **Motivo del fallo.** El objeto `death` trae la cola y el exchange de origen, las routing keys, el motivo
+  (`rejected` = NACK sin reencolar), el número de veces y la hora (cabecera `x-death`). El texto exacto de la
+  excepción no viaja en el mensaje: está en los logs de notify.
+
+Ejemplo de respuesta:
+
+    [{
+      "exchange": "cmd.dead.dlx",
+      "routingKey": "crew.dlq",
+      "redelivered": true,
+      "payload": "{\"type\":\"CREW_TICKET\",...}",
+      "binary": false,
+      "payloadBytes": 215,
+      "payloadTruncated": false,
+      "death": {
+        "queue": "q.cmd.crew",
+        "exchange": "cmd.direct",
+        "routingKeys": ["crew.ticket"],
+        "reason": "rejected",
+        "count": 1,
+        "time": "2026-10-25T21:10:00Z"
+      }
+    }]
 
 ### Validación de entrada
 
