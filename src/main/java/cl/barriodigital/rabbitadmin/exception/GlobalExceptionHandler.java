@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import cl.barriodigital.rabbitadmin.dto.ApiError;
 import cl.barriodigital.rabbitadmin.dto.ExchangeType;
@@ -33,6 +34,12 @@ public class GlobalExceptionHandler {
             ProtectedResourceException.class })
     public ResponseEntity<ApiError> handleConflict(RabbitAdminException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
+    /** La cola existe pero no está habilitada para leer su contenido (no es una DLQ). */
+    @ExceptionHandler(InspectionNotAllowedException.class)
+    public ResponseEntity<ApiError> handleInspectionNotAllowed(InspectionNotAllowedException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), null);
     }
 
     @ExceptionHandler(InvalidTopologyException.class)
@@ -71,6 +78,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiError> handleMissingParameter(MissingServletRequestParameterException ex) {
         return build(HttpStatus.BAD_REQUEST, "Falta el parámetro obligatorio '" + ex.getParameterName() + "'", null);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return build(HttpStatus.BAD_REQUEST, "El parámetro '" + ex.getName() + "' no tiene un valor válido", null);
     }
 
     private static boolean mentions(Throwable error, String text) {

@@ -13,7 +13,7 @@ import org.springframework.web.client.RestClient;
  * a partir de {@code spring.rabbitmq.*}; aquí solo se define el cliente HTTP del Management API.
  */
 @Configuration
-@EnableConfigurationProperties({ ManagementProperties.class, ProtectionProperties.class })
+@EnableConfigurationProperties({ ManagementProperties.class, ProtectionProperties.class, InspectionProperties.class })
 public class RabbitAdminConfig {
 
     @Bean

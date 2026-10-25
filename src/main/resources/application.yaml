@@ -32,6 +32,13 @@ barriodigital:
       exchanges:
         - "cmd.*"
         - "amq.*"
+    # Lectura del contenido de mensajes sin consumirlos: solo en las colas de mensajes fallidos.
+    inspection:
+      queues:
+        - "*.dlq"
+      default-messages: 20
+      max-messages: 50
+      max-payload-bytes: 20000
 
 management:
   endpoints:
