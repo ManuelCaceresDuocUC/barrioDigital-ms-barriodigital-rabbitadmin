@@ -2,6 +2,7 @@ package cl.barriodigital.rabbitadmin.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -31,6 +32,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Publicación entre microservicios: ruta interna, sin token. El BFF solo reenvía /api/**,
+                        // así que desde fuera de la red de Docker no se alcanza.
+                        .requestMatchers(HttpMethod.POST, "/internal/messages").permitAll()
                         // Documentación OpenAPI: pública en el servicio (el puerto solo se publica en localhost).
                         .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                         .anyRequest().hasAuthority(ADMIN_ROLE))

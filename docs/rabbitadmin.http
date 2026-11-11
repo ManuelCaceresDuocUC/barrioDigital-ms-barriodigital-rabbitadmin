@@ -79,3 +79,14 @@ Authorization: Bearer {{token}}
 ### Leer los mensajes de una DLQ (solo colas *.dlq; no los consume)
 GET {{baseUrl}}/api/rabbit/queues/q.cmd.crew.dlq/messages?count=10
 Authorization: Bearer {{token}}
+
+### Publicar un mensaje (ruta interna, sin token; solo desde la red de Docker o desde la propia máquina)
+POST http://localhost:8086/internal/messages
+Content-Type: application/json
+
+{
+  "routingKey": "crew.ticket",
+  "type": "CREW_TICKET",
+  "correlationId": "15",
+  "payload": { "ticketId": "15", "category": "Bache", "location": "Plaza central", "priority": "NORMAL" }
+}

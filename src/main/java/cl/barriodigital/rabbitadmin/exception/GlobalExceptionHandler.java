@@ -42,8 +42,8 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), null);
     }
 
-    @ExceptionHandler(InvalidTopologyException.class)
-    public ResponseEntity<ApiError> handleInvalidTopology(InvalidTopologyException ex) {
+    @ExceptionHandler({ InvalidTopologyException.class, InvalidMessageException.class })
+    public ResponseEntity<ApiError> handleInvalidTopology(RabbitAdminException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
