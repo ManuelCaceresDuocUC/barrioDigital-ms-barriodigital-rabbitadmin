@@ -15,6 +15,7 @@ los demás servicios no tengan que administrar el broker directamente.
 |---|---|
 | `controller` | Endpoints REST y códigos HTTP. No conocen la librería de mensajería. |
 | `service` (`RabbitAdminService`) | Reglas de administración y protección de la topología. Único uso de `AmqpAdmin`. |
+| `service` (`MessagePublisherService`) | Publicación de los mensajes de los demás microservicios en `cmd.direct`: único lugar con el `RabbitTemplate`, el formato JSON y las routing keys permitidas. |
 | `client` | Lectura desde el Management API de RabbitMQ (listados y bindings). |
 | `dto` / `exception` | Contratos de entrada y salida, validación y errores en JSON (`ApiError`). |
 | `config` / `security` | Propiedades, seguridad JWT (rol `Admin`) y OpenAPI. |
@@ -52,6 +53,7 @@ inyectan con `spring-security-test`).
 | Controladores (MockMvc con seguridad real) | `QueueControllerTest`, `ExchangeControllerTest`, `BindingControllerTest` | 201, 204, 400, 401, 403 (rol no Admin), 404, 409 y 502 por endpoint |
 | Validación de entrada | `RequestValidationTest`, `ValidationErrorsTest` | Nombre vacío, con espacios o con `amq.`, tipo inexistente, TTL no positivo, routing key larga |
 | Seguridad y roles | `SecurityConfigTest`, `JwtRolesConversionTest`, `OpenApiAccessTest` | 401/403 en JSON, conversión del claim `roles`, docs públicas y API protegida |
+| Publicación de mensajes | `MessagePublisherServiceTest`, `MessagePublisherControllerTest`, `PublishingPropertiesTest` | Sobre y exchange, routing key no permitida, fallas del broker, 202, 400, 502 y ruta sin token |
 | Configuración y arranque | `ManagementPropertiesTest`, `ProtectedResourcesTest`, `OpenApiConfigTest`, `RabbitAdminApplicationTests` | Propiedades, patrones protegidos, esquema OpenAPI y carga del contexto |
 
 Los tests de controladores usan `@SpringJUnitWebConfig` con `@EnableWebMvc` y el filtro de
@@ -64,6 +66,10 @@ Todas las rutas de `/api/rabbit/**` exigen un JWT de Entra ID con el rol `Admin`
 (claim `roles`). Sin token responde **401** y con otro rol (Operador, Cliente, Auditor) **403**,
 ambos con cuerpo JSON. Solo `/actuator/health`, `/v3/api-docs` y Swagger UI son públicos; el
 puerto 8086 se publica únicamente en `127.0.0.1` de ec2-apps.
+
+La única excepción es `POST /internal/messages`, que no pide token porque la usan los demás
+microservicios por la red interna de Docker. No queda expuesta: el BFF solo reenvía las rutas
+`/api/**`, y el puerto 8086 solo se publica en `127.0.0.1`.
 
 ## Endpoints
 
@@ -81,6 +87,7 @@ puerto 8086 se publica únicamente en `127.0.0.1` de ec2-apps.
 | POST | `/api/rabbit/bindings` | 201 | Crea un binding exchange → cola |
 | GET | `/api/rabbit/bindings?queue=` | 200 | Lista bindings (filtro por cola opcional) |
 | DELETE | `/api/rabbit/bindings?exchange=&queue=&routingKey=` | 204 | Elimina un binding |
+| POST | `/internal/messages` | 202 | Publica un mensaje para otro microservicio (ruta interna, sin token) |
 
 El borrado de bindings usa parámetros de URL porque un binding no tiene identificador propio.
 Una routing key con `#` se envía como `%23`.
@@ -122,6 +129,27 @@ Ejemplo de respuesta:
         "time": "2026-10-25T21:10:00Z"
       }
     }]
+
+### Publicación de mensajes para otros microservicios
+
+Los microservicios no se conectan a RabbitMQ: le piden a este servicio que publique. Así el exchange, las
+routing keys permitidas, el formato JSON y el sobre del evento se definen una sola vez
+(`barriodigital.rabbitadmin.publishing` en `application.yaml`).
+
+    POST /internal/messages
+    {
+      "routingKey": "crew.ticket",
+      "type": "CREW_TICKET",
+      "correlationId": "15",
+      "traceId": "9b2f...",          (opcional: se genera si falta)
+      "payload": { "ticketId": "15", "category": "Bache" }
+    }
+
+El servicio arma el sobre (`type`, `eventId`, `timestamp`, `traceId`, `correlationId`, `payload`), lo publica en
+`cmd.direct` y responde **202** con `{ "eventId", "exchange", "routingKey" }`. Responde **400** si falta un
+campo o la routing key no es una de las permitidas (`email.send`, `crew.ticket`, `certificate.gen`) y **502**
+si RabbitMQ no responde. Un 202 significa que el mensaje se entregó al broker; si este no lo puede enrutar o lo
+rechaza, queda registrado en el log.
 
 ### Validación de entrada
 

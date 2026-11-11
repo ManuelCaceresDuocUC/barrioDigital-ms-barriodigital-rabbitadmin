@@ -10,6 +10,9 @@ spring:
     username: ${RABBITMQ_USER}
     password: ${RABBITMQ_PASSWORD}
     connection-timeout: 5s
+    # Para detectar en el log los mensajes que el broker rechaza o no puede enrutar.
+    publisher-confirm-type: correlated
+    publisher-returns: true
   security:
     oauth2:
       resourceserver:
@@ -39,6 +42,13 @@ barriodigital:
       default-messages: 20
       max-messages: 50
       max-payload-bytes: 20000
+    # Publicación de mensajes de los demás microservicios: exchange y únicas routing keys aceptadas.
+    publishing:
+      exchange: cmd.direct
+      routing-keys:
+        - "email.send"
+        - "crew.ticket"
+        - "certificate.gen"
 
 management:
   endpoints:
