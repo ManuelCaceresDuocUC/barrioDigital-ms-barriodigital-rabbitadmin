@@ -1,9 +1,13 @@
+# QUÉ ES: configuración del microservicio rabbitadmin. ${NOMBRE:valor} toma la variable de entorno NOMBRE
+# y, si no existe, usa el valor por defecto.
 server:
+  # Puerto por defecto; en docker-compose se sobreescribe con SERVER_PORT (8086).
   port: 8086
 
 spring:
   application:
     name: barriodigital-ms-rabbitadmin
+  # Conexión AMQP a RabbitMQ (usuario y clave vienen de variables de entorno, nunca escritas aquí).
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -17,8 +21,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          # Emisor de los tokens (Azure Entra ID): de aquí se obtienen las claves para validar el JWT.
           issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/ffcb40ec-aa43-4c4e-acd8-4d27467872c5/v2.0}
 
+# Propiedades propias (se leen con los records de la carpeta config/).
 barriodigital:
   rabbitadmin:
     # API HTTP de gestión de RabbitMQ: cubre lo que AMQP no ofrece (listar colas, exchanges y bindings).
@@ -39,9 +45,9 @@ barriodigital:
     inspection:
       queues:
         - "*.dlq"
-      default-messages: 20
-      max-messages: 50
-      max-payload-bytes: 20000
+      default-messages: 20       # mensajes que se leen si el cliente no indica count
+      max-messages: 50           # tope por lectura
+      max-payload-bytes: 20000   # el cuerpo de cada mensaje se corta a este tamaño
     # Publicación de mensajes de los demás microservicios: exchange y únicas routing keys aceptadas.
     publishing:
       exchange: cmd.direct
@@ -50,6 +56,7 @@ barriodigital:
         - "crew.ticket"
         - "certificate.gen"
 
+# Actuator: solo se expone /actuator/health (con probes liveness/readiness para Docker).
 management:
   endpoints:
     web:
@@ -60,6 +67,7 @@ management:
       probes:
         enabled: true
 
+# Swagger / OpenAPI: se puede apagar con OPENAPI_ENABLED=false.
 springdoc:
   api-docs:
     enabled: ${OPENAPI_ENABLED:true}

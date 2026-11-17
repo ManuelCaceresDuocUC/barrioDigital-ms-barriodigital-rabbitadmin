@@ -5,10 +5,14 @@ import org.springframework.util.PatternMatchUtils;
 
 import cl.barriodigital.rabbitadmin.config.ProtectionProperties;
 
-/** Decide qué colas y exchanges pertenecen a la topología del sistema y no pueden eliminarse. */
+/**
+ * QUÉ ES: componente que decide qué colas y exchanges son "del sistema" y no pueden eliminarse.
+ * QUÉ HACE: compara el nombre con los patrones de barriodigital.rabbitadmin.protection (application.yaml).
+ */
 @Component
 public class ProtectedResources {
 
+    // Patrones con comodín * para colas y exchanges.
     private final String[] queuePatterns;
     private final String[] exchangePatterns;
 
@@ -17,6 +21,7 @@ public class ProtectedResources {
         this.exchangePatterns = properties.exchanges().toArray(String[]::new);
     }
 
+    // true si la cola es del sistema.
     public boolean isProtectedQueue(String name) {
         return name != null && PatternMatchUtils.simpleMatch(queuePatterns, name);
     }

@@ -19,17 +19,24 @@ import cl.barriodigital.rabbitadmin.dto.ApiError;
 import cl.barriodigital.rabbitadmin.dto.ExchangeType;
 import lombok.extern.slf4j.Slf4j;
 
-/** Traduce las excepciones de dominio y de entrada a respuestas JSON con un {@code message} legible. */
+/**
+ * Traduce las excepciones de dominio y de entrada a respuestas JSON con un {@code message} legible.
+ *
+ * <p>QUÉ ES: manejador global de errores (@RestControllerAdvice). Códigos: 404 no existe; 409 conflicto
+ * (ya existe / protegido); 403 lectura no permitida; 400 petición inválida; 502 falla de RabbitMQ.
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // 404: recurso inexistente.
     @ExceptionHandler({ QueueNotFoundException.class, ExchangeNotFoundException.class,
             BindingNotFoundException.class })
     public ResponseEntity<ApiError> handleNotFound(RabbitAdminException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
+    // 409: ya existe o es un recurso protegido del sistema.
     @ExceptionHandler({ QueueAlreadyExistsException.class, ExchangeAlreadyExistsException.class,
             ProtectedResourceException.class })
     public ResponseEntity<ApiError> handleConflict(RabbitAdminException ex) {
@@ -42,6 +49,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), null);
     }
 
+    // 400: datos o reglas inválidas.
     @ExceptionHandler({ InvalidTopologyException.class, InvalidMessageException.class })
     public ResponseEntity<ApiError> handleInvalidTopology(RabbitAdminException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
@@ -54,6 +62,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), null);
     }
 
+    // 400: falló @Valid; se detalla campo por campo.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         // TreeMap: el orden de los campos es estable y el mensaje no cambia entre ejecuciones.
@@ -66,6 +75,7 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, fieldErrors);
     }
 
+    // 400: JSON ilegible; si el problema es un tipo de exchange desconocido se informan los valores permitidos.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {
         if (mentions(ex, ExchangeType.class.getSimpleName())) {
@@ -75,16 +85,19 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es un JSON válido", null);
     }
 
+    // 400: falta un parámetro obligatorio de la URL.
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiError> handleMissingParameter(MissingServletRequestParameterException ex) {
         return build(HttpStatus.BAD_REQUEST, "Falta el parámetro obligatorio '" + ex.getParameterName() + "'", null);
     }
 
+    // 400: parámetro de la URL con tipo incorrecto.
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return build(HttpStatus.BAD_REQUEST, "El parámetro '" + ex.getName() + "' no tiene un valor válido", null);
     }
 
+    // Busca un texto en el mensaje de la excepción y en todas sus causas anidadas.
     private static boolean mentions(Throwable error, String text) {
         for (Throwable current = error; current != null; current = current.getCause()) {
             if (current.getMessage() != null && current.getMessage().contains(text)) {
@@ -94,6 +107,7 @@ public class GlobalExceptionHandler {
         return false;
     }
 
+    // Construye el ApiError uniforme.
     private ResponseEntity<ApiError> build(HttpStatus status, String message, Map<String, String> fieldErrors) {
         ApiError body = new ApiError(Instant.now(), status.value(), status.getReasonPhrase(), message, fieldErrors);
         return ResponseEntity.status(status).body(body);

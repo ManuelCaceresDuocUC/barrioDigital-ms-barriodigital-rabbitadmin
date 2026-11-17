@@ -1,6 +1,7 @@
 package cl.barriodigital.rabbitadmin.dto;
 
 /**
+ * QUÉ ES: constantes de validación (regex y mensajes) compartidas por los DTO.
  * Reglas de validación compartidas por los DTO de entrada. Las constantes se usan en anotaciones
  * de Bean Validation, por eso son literales y los mensajes no contienen llaves ni signos de dólar
  * (el interpolador los trataría como expresiones).

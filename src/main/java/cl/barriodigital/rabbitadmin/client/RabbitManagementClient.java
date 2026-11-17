@@ -18,7 +18,7 @@ import cl.barriodigital.rabbitadmin.config.ManagementProperties;
 import cl.barriodigital.rabbitadmin.exception.ManagementApiException;
 
 /**
- * Cliente del API HTTP de gestión de RabbitMQ. Solo consulta lo que {@code AmqpAdmin} no ofrece:
+ * QUÉ ES: cliente del API HTTP de gestión de RabbitMQ. Solo consulta lo que {@code AmqpAdmin} no ofrece:
  * listar colas, exchanges y bindings, y leer sus propiedades. Opera sobre el vhost por defecto ("/").
  */
 @Component
@@ -27,6 +27,7 @@ public class RabbitManagementClient {
     /** El vhost "/" va codificado en la ruta del API de gestión. */
     private static final String VHOST = "%2F";
 
+    // Cliente HTTP ya configurado con credenciales y timeouts (ver RabbitAdminConfig).
     private final RestClient restClient;
     private final String baseUrl;
 
@@ -35,26 +36,32 @@ public class RabbitManagementClient {
         this.baseUrl = properties.url();
     }
 
+    // Todas las colas del vhost.
     public List<ManagementQueue> listQueues() {
         return getList("/api/queues/" + VHOST, new ParameterizedTypeReference<>() { });
     }
 
+    // Una cola por nombre; vacío si no existe (404 del broker).
     public Optional<ManagementQueue> findQueue(String name) {
         return find("/api/queues/" + VHOST + "/" + segment(name), ManagementQueue.class);
     }
 
+    // Todos los exchanges.
     public List<ManagementExchange> listExchanges() {
         return getList("/api/exchanges/" + VHOST, new ParameterizedTypeReference<>() { });
     }
 
+    // ¿Existe el exchange?
     public boolean exchangeExists(String name) {
         return find("/api/exchanges/" + VHOST + "/" + segment(name), ManagementExchange.class).isPresent();
     }
 
+    // Todos los bindings.
     public List<ManagementBinding> listBindings() {
         return getList("/api/bindings/" + VHOST, new ParameterizedTypeReference<>() { });
     }
 
+    // Bindings de una sola cola.
     public List<ManagementBinding> listQueueBindings(String queue) {
         return getList("/api/queues/" + VHOST + "/" + segment(queue) + "/bindings",
                 new ParameterizedTypeReference<>() { });
@@ -66,6 +73,7 @@ public class RabbitManagementClient {
      */
     public List<ManagementMessage> peekMessages(String queue, int count, int maxPayloadBytes) {
         String path = "/api/queues/" + VHOST + "/" + segment(queue) + "/get";
+        // Cuerpo de la petición: cuántos mensajes, devolverlos a la cola, decodificar solo si es texto, cortar el cuerpo.
         Map<String, Object> request = Map.of(
                 "count", count,
                 "ackmode", "ack_requeue_true",
@@ -80,10 +88,12 @@ public class RabbitManagementClient {
                     .body(new ParameterizedTypeReference<List<ManagementMessage>>() { });
             return body == null ? List.of() : body;
         } catch (RestClientException ex) {
+            // Cualquier falla de red/HTTP se convierte en una excepción de dominio (502).
             throw new ManagementApiException("No se pudieron leer los mensajes de la cola '" + queue + "'", ex);
         }
     }
 
+    // GET genérico que devuelve una lista (vacía si el broker responde sin cuerpo).
     private <T> List<T> getList(String path, ParameterizedTypeReference<List<T>> type) {
         try {
             List<T> body = restClient.get().uri(URI.create(baseUrl + path)).retrieve().body(type);
@@ -93,6 +103,7 @@ public class RabbitManagementClient {
         }
     }
 
+    // GET genérico de un recurso; el 404 se traduce a Optional.empty() y otros errores a excepción.
     private <T> Optional<T> find(String path, Class<T> type) {
         try {
             return Optional.ofNullable(restClient.get().uri(URI.create(baseUrl + path)).retrieve().body(type));
@@ -103,6 +114,7 @@ public class RabbitManagementClient {
         }
     }
 
+    // Codifica un nombre para usarlo seguro dentro de la URL (espacios, barras, etc.).
     private static String segment(String name) {
         return UriUtils.encodePathSegment(name, StandardCharsets.UTF_8);
     }

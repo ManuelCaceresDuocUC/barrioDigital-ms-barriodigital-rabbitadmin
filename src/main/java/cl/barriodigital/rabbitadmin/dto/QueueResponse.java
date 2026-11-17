@@ -5,6 +5,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
+ * QUÉ ES: DTO de salida con el estado de una cola (mensajes, consumidores, estado, si es protegida).
  * Estado de una cola. Los campos que el Management API aún no conoce (por ejemplo, una cola recién
  * creada) se omiten en lugar de inventarse.
  */

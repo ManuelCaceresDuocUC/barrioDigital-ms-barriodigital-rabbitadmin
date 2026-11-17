@@ -5,7 +5,10 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-/** Por qué y desde dónde llegó un mensaje a la DLQ (primer registro de la cabecera {@code x-death}). */
+/**
+ * QUÉ ES: DTO de salida con el historial de "muerte" de un mensaje (reason: rejected, expired...; count: cuántas veces).
+ * Por qué y desde dónde llegó un mensaje a la DLQ (primer registro de la cabecera {@code x-death}).
+ */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record DeathInfo(
         String queue,

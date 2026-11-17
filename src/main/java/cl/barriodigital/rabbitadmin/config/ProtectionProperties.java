@@ -4,7 +4,10 @@ import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/** Nombres (con comodín *) de la topología que la API no permite eliminar. */
+/**
+ * QUÉ ES: lista de colas y exchanges "del sistema" (admiten comodín *, p. ej. q.cmd.*) que la API no deja eliminar.
+ * Se consulta desde ProtectedResources.
+ */
 @ConfigurationProperties(prefix = "barriodigital.rabbitadmin.protection")
 public record ProtectionProperties(List<String> queues, List<String> exchanges) {
 

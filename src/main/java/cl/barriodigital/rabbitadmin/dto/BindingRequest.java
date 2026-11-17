@@ -4,7 +4,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** Binding de un exchange a una cola. Una routing key nula equivale a vacía. */
+/**
+ * QUÉ ES: DTO de entrada para crear/eliminar un binding. La routing key es la "etiqueta" que decide qué mensajes
+ * del exchange llegan a la cola. Una routing key nula equivale a vacía.
+ */
 public record BindingRequest(
         @NotNull(message = "El exchange es obligatorio")
         @Pattern(regexp = ValidationRules.RESOURCE_NAME_REGEX, message = ValidationRules.RESOURCE_NAME_MESSAGE)

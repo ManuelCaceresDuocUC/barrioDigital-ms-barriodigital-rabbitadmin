@@ -5,7 +5,10 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.Assert;
 
-/** Conexión al API HTTP de gestión de RabbitMQ (puerto 15672). */
+/**
+ * QUÉ ES: propiedades de conexión al API HTTP de gestión de RabbitMQ (puerto 15672), leídas de application.yaml.
+ * Todas son obligatorias: si falta alguna la aplicación falla al arrancar (fail-fast).
+ */
 @ConfigurationProperties(prefix = "barriodigital.rabbitadmin.management")
 public record ManagementProperties(String url, String username, String password, Duration timeout) {
 
@@ -15,6 +18,7 @@ public record ManagementProperties(String url, String username, String password,
         Assert.hasText(password, "barriodigital.rabbitadmin.management.password es obligatoria");
         Assert.isTrue(timeout != null && !timeout.isZero() && !timeout.isNegative(),
                 "barriodigital.rabbitadmin.management.timeout debe ser una duración positiva");
+        // Normaliza: quita la barra final para poder concatenar rutas sin duplicarla.
         url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 

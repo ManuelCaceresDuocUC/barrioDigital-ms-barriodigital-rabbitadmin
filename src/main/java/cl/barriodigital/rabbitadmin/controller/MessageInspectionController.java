@@ -16,13 +16,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-/** Lectura de los mensajes fallidos. El acceso (solo Admin) lo exige la configuración de seguridad. */
+/**
+ * QUÉ ES: controlador REST para leer mensajes de las colas de mensajes fallidos (DLQ).
+ * Una DLQ guarda los mensajes que un consumidor no pudo procesar. El acceso (solo Admin) lo exige la configuración de seguridad.
+ */
 @Tag(name = "Mensajes", description = "Leer los mensajes de las colas de mensajes fallidos (DLQ)")
 @RestController
 @RequestMapping("/api/rabbit/queues")
 @RequiredArgsConstructor
 public class MessageInspectionController {
 
+    // Servicio con las reglas de lectura (solo DLQ, enmascarado de datos).
     private final MessageInspectionService service;
 
     @Operation(summary = "Leer los mensajes de una DLQ sin consumirlos",
@@ -33,6 +37,7 @@ public class MessageInspectionController {
                     @ApiResponse(responseCode = "400", description = "El parámetro count no es válido"),
                     @ApiResponse(responseCode = "403", description = "La cola no es una DLQ"),
                     @ApiResponse(responseCode = "404", description = "La cola no existe") })
+    // GET /api/rabbit/queues/{name}/messages?count=N
     @GetMapping("/{name}/messages")
     public List<DlqMessageResponse> peek(
             @PathVariable String name,

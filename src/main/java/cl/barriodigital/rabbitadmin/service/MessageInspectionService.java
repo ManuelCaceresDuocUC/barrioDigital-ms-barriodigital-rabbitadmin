@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
+ * QUÉ ES: servicio que permite ver los mensajes de las DLQ (colas de mensajes fallidos) sin consumirlos.
  * Lectura de los mensajes de las DLQ sin consumirlos: los mensajes se devuelven a la cola (con la
  * marca de "reentregado" que RabbitMQ les pone al leerlos). Solo se permite en las colas indicadas
  * en {@link InspectionProperties}, porque en una cola con consumidores activos la lectura podría
@@ -30,9 +31,11 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class MessageInspectionService {
 
+    // Cliente del Management API (único que puede leer mensajes sin consumirlos).
     private final RabbitManagementClient management;
     private final InspectionProperties properties;
 
+    // Lee hasta 'count' mensajes. Orden de validaciones: cola permitida (403) -> count válido (400) -> cola existe (404).
     public List<DlqMessageResponse> peek(String queue, Integer count) {
         if (!isInspectable(queue)) {
             throw new InspectionNotAllowedException(queue);
@@ -51,10 +54,12 @@ public class MessageInspectionService {
         return messages.stream().map(this::toResponse).toList();
     }
 
+    // Solo las colas que calzan con inspection.queues (por defecto *.dlq).
     private boolean isInspectable(String queue) {
         return queue != null && PatternMatchUtils.simpleMatch(properties.queues().toArray(String[]::new), queue);
     }
 
+    // Convierte el mensaje del broker en DTO: enmascara correo/RUT y no entrega contenido binario.
     private DlqMessageResponse toResponse(ManagementMessage message) {
         boolean binary = "base64".equalsIgnoreCase(message.payloadEncoding());
         int bytes = message.payloadBytes() == null ? 0 : message.payloadBytes();
@@ -66,6 +71,7 @@ public class MessageInspectionService {
 
     /** Primer registro de {@code x-death} (el más reciente); null si el mensaje no pasó por un dead-letter. */
     private DeathInfo deathOf(ManagementMessage message) {
+        // Navega con cuidado properties -> headers -> x-death[0]; cualquier eslabón ausente devuelve null.
         Map<String, Object> props = message.properties();
         if (props == null || !(props.get("headers") instanceof Map<?, ?> headers)) {
             return null;
@@ -80,10 +86,12 @@ public class MessageInspectionService {
                 first.get("time") instanceof Number t ? Instant.ofEpochSecond(t.longValue()) : null);
     }
 
+    // Valor a texto, tolerando null.
     private static String text(Object value) {
         return value == null ? null : value.toString();
     }
 
+    // Lista de routing keys del x-death a lista de texto.
     private static List<String> routingKeys(Object value) {
         return value instanceof List<?> keys ? keys.stream().map(String::valueOf).toList() : List.of();
     }

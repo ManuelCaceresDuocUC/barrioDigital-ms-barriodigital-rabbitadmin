@@ -1,6 +1,6 @@
 package cl.barriodigital.rabbitadmin.exception;
 
-/** Se intentó eliminar un elemento de la topología del sistema (colas q.cmd.*, exchanges cmd.* y amq.*). */
+/** QUÉ ES: se traduce a HTTP 409. Se intentó eliminar un elemento de la topología del sistema (colas q.cmd.*, exchanges cmd.* y amq.*). */
 public class ProtectedResourceException extends RabbitAdminException {
 
     public ProtectedResourceException(String kind, String name) {

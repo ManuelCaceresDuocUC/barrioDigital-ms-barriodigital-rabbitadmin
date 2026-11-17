@@ -22,12 +22,15 @@ import cl.barriodigital.rabbitadmin.security.RestSecurityErrorHandler;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    // Único rol autorizado para administrar RabbitMQ.
     public static final String ADMIN_ROLE = "Admin";
 
+    // Cadena de filtros de seguridad: define qué rutas son públicas y cuáles exigen el rol Admin.
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter,
                                     RestSecurityErrorHandler errorHandler) throws Exception {
         http
+                // Sin sesiones ni cookies (API con JWT): CSRF no aplica y cada petición se autentica por separado.
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -37,10 +40,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/internal/messages").permitAll()
                         // Documentación OpenAPI: pública en el servicio (el puerto solo se publica en localhost).
                         .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+                        // Todo lo demás: solo con el rol Admin.
                         .anyRequest().hasAuthority(ADMIN_ROLE))
+                // Errores 401/403 en JSON uniforme.
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
+                // Valida el JWT de Azure y convierte su claim 'roles' en permisos.
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler)
@@ -48,6 +54,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // Traduce el JWT a permisos de Spring Security leyendo el claim 'roles'.
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();

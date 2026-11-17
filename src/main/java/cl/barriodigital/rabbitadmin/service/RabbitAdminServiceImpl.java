@@ -42,6 +42,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
+ * QUÉ ES: implementación de RabbitAdminService; contiene toda la lógica de administración (validar, crear, borrar).
+ * AMQP (AmqpAdmin) sirve para crear/borrar/consultar en tiempo real; el Management API HTTP, para listar.
  * Única clase que usa {@link AmqpAdmin}. Las operaciones que AMQP no ofrece (listados y propiedades)
  * se delegan en {@link RabbitManagementClient}.
  */
@@ -50,8 +52,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class RabbitAdminServiceImpl implements RabbitAdminService {
 
+    // Prefijo reservado por RabbitMQ para sus propios recursos.
     private static final String SYSTEM_PREFIX = "amq.";
 
+    // Cliente AMQP: declarar/eliminar colas, exchanges y bindings.
     private final AmqpAdmin amqpAdmin;
     private final RabbitManagementClient management;
     private final ProtectedResources protectedResources;
@@ -60,18 +64,22 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
 
     @Override
     public QueueResponse createQueue(CreateQueueRequest request) {
+        // 1) validar nombre y que no exista.
         String name = requireName(request.name(), "cola");
         if (queueExists(name)) {
             throw new QueueAlreadyExistsException(name);
         }
 
+        // durable (sobrevive reinicios) es true por defecto; autoDelete (se borra sin consumidores) es false por defecto.
         boolean durable = request.durable() == null || request.durable();
         boolean autoDelete = Boolean.TRUE.equals(request.autoDelete());
+        // Una routing key de dead-letter no tiene sentido sin exchange de dead-letter.
         boolean hasDlx = StringUtils.hasText(request.deadLetterExchange());
         if (StringUtils.hasText(request.deadLetterRoutingKey()) && !hasDlx) {
             throw new InvalidTopologyException("deadLetterRoutingKey requiere indicar deadLetterExchange");
         }
 
+        // 2) construir la cola con sus opciones (DLX, TTL).
         QueueBuilder builder = durable ? QueueBuilder.durable(name) : QueueBuilder.nonDurable(name);
         if (autoDelete) {
             builder.autoDelete();
@@ -87,6 +95,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
         }
         Queue queue = builder.build();
 
+        // 3) declararla en RabbitMQ.
         run("crear la cola '" + name + "'", () -> amqpAdmin.declareQueue(queue));
         log.info("Cola creada: {} (durable={}, autoDelete={})", name, durable, autoDelete);
 
@@ -95,6 +104,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
                 protectedResources.isProtectedQueue(name));
     }
 
+    // Lista desde el Management API, ordenada por nombre.
     @Override
     public List<QueueResponse> listQueues() {
         return management.listQueues().stream()
@@ -103,6 +113,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
                 .toList();
     }
 
+    // Detalle en tiempo real; 404 si no existe.
     @Override
     public QueueResponse getQueue(String name) {
         QueueInformation info = call("consultar la cola '" + name + "'", () -> amqpAdmin.getQueueInfo(name));
@@ -122,6 +133,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
                 protectedResources.isProtectedQueue(name));
     }
 
+    // Elimina una cola: primero comprueba que no sea protegida (409) y que exista (404).
     @Override
     public void deleteQueue(String name) {
         if (protectedResources.isProtectedQueue(name)) {
@@ -132,6 +144,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
         log.info("Cola eliminada: {}", name);
     }
 
+    // Vacía los mensajes (sin eliminar la cola).
     @Override
     public void purgeQueue(String name) {
         requireQueue(name);
@@ -153,6 +166,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
 
         boolean durable = request.durable() == null || request.durable();
         boolean autoDelete = Boolean.TRUE.equals(request.autoDelete());
+        // Instancia de la clase correspondiente al tipo pedido.
         Exchange exchange = switch (request.type()) {
             case DIRECT -> new DirectExchange(name, durable, autoDelete);
             case TOPIC -> new TopicExchange(name, durable, autoDelete);
@@ -166,6 +180,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
                 protectedResources.isProtectedExchange(name));
     }
 
+    // Lista exchanges ordenados por nombre.
     @Override
     public List<ExchangeResponse> listExchanges() {
         return management.listExchanges().stream()
@@ -192,6 +207,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
 
     // ------------------------------------------------------------- bindings
 
+    // Crea un binding exchange -> cola; ambos deben existir.
     @Override
     public BindingResponse createBinding(BindingRequest request) {
         String exchange = requireName(request.exchange(), "exchange");
@@ -208,6 +224,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
         return new BindingResponse(exchange, queue, routingKey);
     }
 
+    // Lista bindings hacia colas (todos o de una cola).
     @Override
     public List<BindingResponse> listBindings(String queue) {
         List<ManagementBinding> bindings;
@@ -225,6 +242,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
                 .toList();
     }
 
+    // Elimina un binding si existe; los del sistema están protegidos.
     @Override
     public void deleteBinding(BindingRequest request) {
         String exchange = requireName(request.exchange(), "exchange");
@@ -236,6 +254,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
             throw new ProtectedResourceException("binding", exchange + " -> " + queue);
         }
         requireQueue(queue);
+        // Comprueba que el binding exista antes de intentar borrarlo.
         boolean exists = management.listQueueBindings(queue).stream()
                 .anyMatch(binding -> exchange.equals(binding.source())
                         && routingKey.equals(binding.routingKey() == null ? "" : binding.routingKey()));
@@ -250,6 +269,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
 
     // -------------------------------------------------------------- helpers
 
+    // Valida que el nombre no esté vacío ni use el prefijo reservado amq. (400).
     private String requireName(String name, String kind) {
         if (!StringUtils.hasText(name)) {
             throw new InvalidTopologyException("El nombre de la " + kind + " no puede estar vacío");
@@ -260,20 +280,24 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
         return name;
     }
 
+    // Lanza 404 si la cola no existe.
     private void requireQueue(String name) {
         if (!queueExists(name)) {
             throw new QueueNotFoundException(name);
         }
     }
 
+    // Consulta AMQP: null significa que no existe.
     private boolean queueExists(String name) {
         return call("consultar la cola '" + name + "'", () -> amqpAdmin.getQueueInfo(name)) != null;
     }
 
+    // Consulta el Management API.
     private boolean exchangeExists(String name) {
         return management.exchangeExists(name);
     }
 
+    // Detalles opcionales: si el Management API falla no se interrumpe la consulta.
     private Optional<ManagementQueue> findDetails(String name) {
         try {
             return management.findQueue(name);
@@ -283,6 +307,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
         }
     }
 
+    // Mapeos Management -> DTO (los nulos se normalizan).
     private QueueResponse toResponse(ManagementQueue queue) {
         return new QueueResponse(queue.name(), queue.durable(), queue.autoDelete(), queue.arguments(),
                 queue.messages() == null ? 0 : queue.messages(),
@@ -296,6 +321,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
                 protectedResources.isProtectedExchange(exchange.name()));
     }
 
+    // Ejecuta una operación AMQP traduciendo AmqpException a BrokerOperationException (502).
     private void run(String action, Runnable operation) {
         try {
             operation.run();
@@ -304,6 +330,7 @@ public class RabbitAdminServiceImpl implements RabbitAdminService {
         }
     }
 
+    // Igual que run, pero devuelve un valor.
     private <T> T call(String action, Supplier<T> operation) {
         try {
             return operation.get();

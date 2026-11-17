@@ -21,6 +21,7 @@ public record PublishingProperties(String exchange, List<String> routingKeys) {
         Assert.notEmpty(routingKeys, "barriodigital.rabbitadmin.publishing.routing-keys necesita al menos una clave");
     }
 
+    // true si la routing key está en la lista blanca.
     public boolean allows(String routingKey) {
         return routingKey != null && routingKeys.contains(routingKey);
     }

@@ -15,19 +15,23 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
+ * QUÉ ES: controlador REST interno (/internal/messages) para que otros microservicios publiquen mensajes en RabbitMQ.
  * Publicación de mensajes para los demás microservicios (uso interno, no del frontend). No exige
  * token: solo se alcanza por la red de Docker, porque el BFF únicamente reenvía las rutas
  * {@code /api/**}. Responde 202 cuando el mensaje se entregó al broker, 400 si los datos o la
  * routing key no son válidos y 502 si RabbitMQ no responde.
  */
+// @Hidden: no aparece en Swagger porque es un endpoint interno entre microservicios.
 @Hidden
 @RestController
 @RequestMapping("/internal/messages")
 @RequiredArgsConstructor
 public class MessagePublisherController {
 
+    // Servicio que arma el sobre y publica en RabbitMQ.
     private final MessagePublisherService service;
 
+    // POST /internal/messages: 202 Accepted = el broker recibió el mensaje.
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     public PublishedMessageResponse publish(@Valid @RequestBody PublishMessageRequest request) {
