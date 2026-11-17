@@ -17,6 +17,7 @@ import org.springframework.util.Assert;
 public record InspectionProperties(List<String> queues, Integer defaultMessages, Integer maxMessages,
                                    Integer maxPayloadBytes) {
 
+    // Constructor compacto: aplica valores por defecto y valida (si algo es inválido, la app no arranca).
     public InspectionProperties {
         queues = queues == null ? List.of() : List.copyOf(queues);
         defaultMessages = defaultMessages == null ? 20 : defaultMessages;

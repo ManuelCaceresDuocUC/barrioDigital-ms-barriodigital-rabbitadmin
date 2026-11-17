@@ -24,13 +24,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-/** Administración de exchanges. El acceso (solo Admin) lo exige la configuración de seguridad. */
+/**
+ * QUÉ ES: controlador REST de exchanges (/api/rabbit/exchanges). Un exchange recibe mensajes y los reparte a colas.
+ * Administración de exchanges. El acceso (solo Admin) lo exige la configuración de seguridad.
+ */
 @Tag(name = "Exchanges", description = "Crear, listar y eliminar exchanges")
 @RestController
 @RequestMapping("/api/rabbit/exchanges")
 @RequiredArgsConstructor
 public class ExchangeController {
 
+    // Servicio con la lógica de administración.
     private final RabbitAdminService service;
 
     @Operation(summary = "Crear un exchange (direct, topic, fanout o headers)", responses = {
@@ -40,6 +44,7 @@ public class ExchangeController {
     @PostMapping
     public ResponseEntity<ExchangeResponse> create(@Valid @RequestBody CreateExchangeRequest request) {
         ExchangeResponse created = service.createExchange(request);
+        // Cabecera Location con la URL del recurso creado (respuesta 201).
         URI location = UriComponentsBuilder.fromPath("/api/rabbit/exchanges/{name}")
                 .buildAndExpand(created.name()).encode().toUri();
         return ResponseEntity.created(location).body(created);
@@ -47,6 +52,7 @@ public class ExchangeController {
 
     @Operation(summary = "Listar los exchanges", responses = {
             @ApiResponse(responseCode = "200", description = "Lista de exchanges") })
+    // GET: lista todos los exchanges.
     @GetMapping
     public List<ExchangeResponse> list() {
         return service.listExchanges();
@@ -57,6 +63,7 @@ public class ExchangeController {
             @ApiResponse(responseCode = "400", description = "Exchange del broker (amq.* o por defecto)"),
             @ApiResponse(responseCode = "404", description = "El exchange no existe"),
             @ApiResponse(responseCode = "409", description = "Exchange de la topología del sistema (cmd.*)") })
+    // DELETE: elimina el exchange por nombre (404 si no existe, 409 si es del sistema).
     @DeleteMapping("/{name}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String name) {

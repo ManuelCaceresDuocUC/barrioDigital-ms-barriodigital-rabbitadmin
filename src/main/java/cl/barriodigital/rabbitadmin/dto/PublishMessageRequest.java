@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
+ * QUÉ ES: DTO de entrada de /internal/messages.
  * Mensaje que un microservicio pide publicar. El servicio completa el sobre con {@code eventId} y
  * {@code timestamp}; quien llama solo aporta el contenido y los datos de trazabilidad.
  */

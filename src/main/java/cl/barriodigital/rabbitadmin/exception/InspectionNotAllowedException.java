@@ -1,6 +1,6 @@
 package cl.barriodigital.rabbitadmin.exception;
 
-/** Se pidió leer el contenido de una cola que no está habilitada para ello (solo las DLQ). */
+/** QUÉ ES: se traduce a HTTP 403. Se pidió leer el contenido de una cola que no está habilitada para ello (solo las DLQ). */
 public class InspectionNotAllowedException extends RabbitAdminException {
 
     public InspectionNotAllowedException(String name) {

@@ -5,6 +5,12 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * QUÉ ES: una cola tal como la devuelve el Management API.
+ * @param arguments argumentos de la cola (por ejemplo x-dead-letter-exchange)
+ * @param messages  cantidad de mensajes que contiene ahora
+ * @param consumers consumidores conectados
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ManagementQueue(
         String name,

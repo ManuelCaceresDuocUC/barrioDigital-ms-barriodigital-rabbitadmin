@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 /**
+ * QUÉ ES: DTO de entrada para crear una cola. deadLetterExchange/deadLetterRoutingKey indican adónde van los mensajes
+ * que fallan o vencen (la DLQ).
  * Datos para crear una cola. {@code durable} es true por defecto y {@code autoDelete} false.
  * El TTL de mensajes va en milisegundos.
  */

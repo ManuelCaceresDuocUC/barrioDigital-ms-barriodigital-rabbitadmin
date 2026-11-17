@@ -3,6 +3,7 @@ package cl.barriodigital.rabbitadmin.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
+ * QUÉ ES: DTO de salida de un mensaje leído de una DLQ.
  * Mensaje de una cola de mensajes fallidos. El cuerpo llega con el correo y el RUT ya enmascarados;
  * si el contenido es binario no se entrega.
  */

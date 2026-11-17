@@ -24,19 +24,24 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-/** Administración de colas. El acceso (solo Admin) lo exige la configuración de seguridad. */
+/**
+ * QUÉ ES: controlador REST de colas (/api/rabbit/queues). Una cola guarda mensajes hasta que un consumidor los procesa.
+ * Administración de colas. El acceso (solo Admin) lo exige la configuración de seguridad.
+ */
 @Tag(name = "Colas", description = "Crear, consultar, eliminar y vaciar colas")
 @RestController
 @RequestMapping("/api/rabbit/queues")
 @RequiredArgsConstructor
 public class QueueController {
 
+    // Servicio con la lógica de administración.
     private final RabbitAdminService service;
 
     @Operation(summary = "Crear una cola", responses = {
             @ApiResponse(responseCode = "201", description = "Cola creada"),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "409", description = "La cola ya existe") })
+    // POST: crea una cola.
     @PostMapping
     public ResponseEntity<QueueResponse> create(@Valid @RequestBody CreateQueueRequest request) {
         QueueResponse created = service.createQueue(request);
@@ -48,6 +53,7 @@ public class QueueController {
 
     @Operation(summary = "Listar las colas", responses = {
             @ApiResponse(responseCode = "200", description = "Lista de colas con mensajes y consumidores") })
+    // GET: lista las colas con su número de mensajes y consumidores.
     @GetMapping
     public List<QueueResponse> list() {
         return service.listQueues();
@@ -56,6 +62,7 @@ public class QueueController {
     @Operation(summary = "Consultar una cola", responses = {
             @ApiResponse(responseCode = "200", description = "Detalle de la cola con conteos en tiempo real"),
             @ApiResponse(responseCode = "404", description = "La cola no existe") })
+    // GET /{name}: detalle de una cola.
     @GetMapping("/{name}")
     public QueueResponse get(@PathVariable String name) {
         return service.getQueue(name);
@@ -65,6 +72,7 @@ public class QueueController {
             @ApiResponse(responseCode = "204", description = "Cola eliminada"),
             @ApiResponse(responseCode = "404", description = "La cola no existe"),
             @ApiResponse(responseCode = "409", description = "Cola de la topología del sistema (q.cmd.*)") })
+    // DELETE /{name}: elimina la cola (las del sistema están protegidas).
     @DeleteMapping("/{name}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String name) {
@@ -74,6 +82,7 @@ public class QueueController {
     @Operation(summary = "Vaciar una cola (también permitido en las DLQ)", responses = {
             @ApiResponse(responseCode = "204", description = "Mensajes eliminados"),
             @ApiResponse(responseCode = "404", description = "La cola no existe") })
+    // DELETE /{name}/messages: deja la cola vacía sin eliminarla.
     @DeleteMapping("/{name}/messages")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void purge(@PathVariable String name) {

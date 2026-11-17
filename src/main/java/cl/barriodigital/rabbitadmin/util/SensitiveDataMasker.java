@@ -3,17 +3,21 @@ package cl.barriodigital.rabbitadmin.util;
 import java.util.regex.Pattern;
 
 /**
+ * QUÉ ES: utilidad estática (constructor privado) que protege datos personales.
  * Oculta correos y RUT antes de entregar el contenido de un mensaje al navegador. Usa las mismas
  * reglas que {@code notify} aplica a sus logs, de modo que un dato personal nunca sale completo.
  */
 public final class SensitiveDataMasker {
 
+    // Correo: conserva la 1ª letra y el dominio (juan@x.cl -> j***@x.cl).
     private static final Pattern EMAIL = Pattern.compile("([\\w.+-])[\\w.+-]*@([\\w-]+(?:\\.[\\w-]+)+)");
+    // RUT chileno con o sin puntos (12.345.678-9): se reemplaza por [RUT].
     private static final Pattern RUT = Pattern.compile("\\b\\d{1,2}(?:\\.?\\d{3}){2}-[\\dkK]\\b");
 
     private SensitiveDataMasker() {
     }
 
+    // Aplica ambas reglas al texto; null se devuelve igual.
     public static String mask(String text) {
         if (text == null) {
             return null;

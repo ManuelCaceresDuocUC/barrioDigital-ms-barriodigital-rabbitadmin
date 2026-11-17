@@ -13,8 +13,10 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 @Configuration
 public class OpenApiConfig {
 
+    // Nombre interno del esquema de seguridad en Swagger.
     public static final String BEARER_SCHEME = "bearerAuth";
 
+    // Bean que Springdoc usa para armar la documentación /v3/api-docs y la interfaz Swagger UI.
     @Bean
     OpenAPI rabbitAdminOpenApi() {
         return new OpenAPI()

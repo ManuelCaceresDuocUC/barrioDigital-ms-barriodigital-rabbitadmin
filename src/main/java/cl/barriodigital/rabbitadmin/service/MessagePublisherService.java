@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
+ * QUÉ ES: servicio que publica mensajes en RabbitMQ para los demás microservicios.
  * Único punto por el que los microservicios publican en RabbitMQ: la conexión, el formato JSON, el
  * exchange y las routing keys permitidas viven aquí y no se repiten en cada servicio.
  */
@@ -22,13 +23,16 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class MessagePublisherService {
 
+    // Plantilla AMQP configurada en RabbitAdminConfig.
     private final RabbitTemplate rabbitTemplate;
     private final PublishingProperties publishing;
 
+    // 1) valida la routing key, 2) arma el sobre, 3) publica, 4) devuelve el eventId.
     public PublishedMessageResponse publish(PublishMessageRequest request) {
         if (!publishing.allows(request.routingKey())) {
             throw new InvalidMessageException("La routing key '" + request.routingKey() + "' no está permitida");
         }
+        // El sobre añade eventId único y hora.
         EventEnvelope envelope = EventEnvelope.of(request);
         try {
             rabbitTemplate.convertAndSend(publishing.exchange(), request.routingKey(), envelope);
